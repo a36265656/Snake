@@ -1,0 +1,193 @@
+#include <stdio.h>
+#include <windows.h>
+#include <conio.h>
+#include <time.h>
+
+#define MAP_MODE "◆"
+#define FOOD "★"
+#define SNAKE_BODY "●"
+#define SNAKE_HEAD "○"
+#define MAP_WIDTH 80
+#define MAP_HEIGHT 30
+#define MOVE_CENTER 20
+#define INITIAL_LEN 5
+#define MAXLENGTH 100
+
+struct Food { int x; int y; }; struct Food food;
+struct Snake { int a[MAXLENGTH]; int b[MAXLENGTH]; int CurrentLength; }; struct Snake snake;
+
+int direct = 'a';
+int flag = 1; //判斷是否需要生成食物(吃or還沒吃到)
+bool gameOver = false;
+int score = 0;
+int speed = 100;
+
+void createMap();
+void createFood();
+void initialSnake();
+void updateScore();
+void increaseScore();
+void moveSnake();
+
+void gotoxy(int x, int y) {  
+    COORD coord;
+    coord.X = x;
+    coord.Y = y;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+}
+
+void updateScore() {
+    int scoreX = MAP_WIDTH + MOVE_CENTER +1;
+    int scoreY = 0;
+    gotoxy(scoreX, scoreY);
+    printf("目前分數: %d", score);
+}
+void increaseScore() {
+    score += 5;
+    updateScore();
+    if (score % 15 == 0) {
+        speed -= speed * 0.1; // 速度調快10%
+    }
+}
+
+void createMap() {
+    for (int i = 0 + MOVE_CENTER; i < MAP_WIDTH + MOVE_CENTER; i += 2) { //上下界線
+        gotoxy(i, 0);//上邊
+        printf(MAP_MODE);
+        gotoxy(i, MAP_HEIGHT - 1);//下邊
+        printf(MAP_MODE);
+    }
+    for (int i = 0; i < MAP_HEIGHT; i++) {//左右界線
+        gotoxy(0 + MOVE_CENTER, i);//左邊
+        printf(MAP_MODE);
+        gotoxy(MAP_WIDTH + MOVE_CENTER, i);//右邊
+        printf(MAP_MODE);
+    }
+    initialSnake();
+    createFood();
+}
+
+void initialSnake() {
+    snake.CurrentLength = INITIAL_LEN;
+    snake.a[0] = MAP_WIDTH / 2 + MOVE_CENTER;
+    snake.b[0] = MAP_HEIGHT / 2;
+    //蛇頭繪製
+    gotoxy(snake.a[0], snake.b[0]);
+    printf(SNAKE_HEAD);
+    //蛇身繪製
+    for (int i = 1; i < snake.CurrentLength; i++) {
+        snake.a[i] = snake.a[i - 1] + 2;
+        snake.b[i] = snake.b[i - 1];
+        gotoxy(snake.a[i], snake.b[i]);
+        printf(SNAKE_BODY);
+    }
+}
+
+void createFood() {
+    srand(clock());
+    int isCreate = 0;
+    while (!isCreate) {
+        isCreate = 1;
+        food.x = (rand() % ((MAP_WIDTH - 6) / 2) * 2) + 2 + MOVE_CENTER;
+        food.y = rand() % (MAP_HEIGHT - 2) + 1;
+        if (food.x % 2 == 0) {
+            for (int i = 0; i < snake.CurrentLength; i++) {
+                if (snake.a[i] == food.x && snake.b[i] == food.y) {
+                    isCreate = 0;
+                    break;
+                }
+            }
+        }
+    }
+    gotoxy(food.x, food.y);
+    printf(FOOD);
+    flag = 0;
+}
+
+void moveSnake() {
+    if (_kbhit()) {
+        fflush(stdin);
+        direct = _getch();
+    }
+    int newHeadX = snake.a[0];
+    int newHeadY = snake.b[0];
+    switch (direct) {
+    case 'w':
+    case 'W':
+    case 72:
+        newHeadY--;
+        break;
+    case 's':
+    case 'S':
+    case 80:
+        newHeadY++;
+        break;
+    case 'a':
+    case 'A':
+    case 75:
+        newHeadX -= 2;
+        break;
+    case 'd':
+    case 'D':
+    case 77:
+        newHeadX += 2;
+        break;
+    }
+    // 檢查新的頭部位置是否與身體碰撞
+    for (int i = 1; i < snake.CurrentLength; i++) {
+        if (newHeadX == snake.a[i] && newHeadY == snake.b[i]) {
+            gameOver = true; // 設置遊戲結束標誌
+            return; // 結束函數執行
+        }
+    }
+    //移動蛇身繪製
+    gotoxy(snake.a[snake.CurrentLength - 1], snake.b[snake.CurrentLength - 1]);
+    printf(" ");
+    for (int i = snake.CurrentLength - 1; i > 0; i--) {
+        snake.a[i] = snake.a[i - 1];
+        snake.b[i] = snake.b[i - 1];
+        gotoxy(snake.a[i - 1], snake.b[i - 1]);
+        printf(SNAKE_BODY);
+    }
+    //移動後蛇頭繪製
+    snake.a[0] = newHeadX;
+    snake.b[0] = newHeadY;
+    gotoxy(snake.a[0], snake.b[0]);
+    printf(SNAKE_HEAD);
+    gotoxy(101, 29);
+    // 蛇頭碰邊界
+    if (snake.a[0] <= 0 + MOVE_CENTER || snake.a[0] >= MAP_WIDTH + MOVE_CENTER ||
+        snake.b[0] <= 0 || snake.b[0] >= MAP_HEIGHT - 1) {
+        gameOver = true; // 設置遊戲結束標誌
+        return; // 結束函數執行
+    }
+    //蛇頭與食物重疊
+    if (snake.a[0] == food.x && snake.b[0] == food.y) {
+        increaseScore();
+        snake.CurrentLength += 2;
+        flag = 1;
+    }
+}
+
+int main() {
+    system("mode con cols=120 lines=30");
+    system("title 貪吃蛇");
+     createMap();  //srand(time(NULL) + clock()); //setConsoleSize(120, 45);
+     while (!gameOver) { // 遊戲循環
+        Sleep(speed);
+        if (flag) {
+            createFood();
+        }
+        moveSnake();
+    }
+// 遊戲結束畫面
+    if (gameOver = true) {
+        gotoxy((MAP_WIDTH-10)  / 2 + MOVE_CENTER, MAP_HEIGHT / 2);
+        printf("遊戲結束!\n");
+        gotoxy((MAP_WIDTH - 20) / 2 + MOVE_CENTER, MAP_HEIGHT / 2+1);
+        printf("請按任意鍵關閉視窗...\n");
+        gotoxy(101, 29);
+    }
+    //_getch();
+    return 0;
+}
