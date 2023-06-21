@@ -177,7 +177,7 @@ int main() {
         }
         moveSnake();
     }
-    // 遊戲結束信息
+    // 遊戲結束
     if (gameOver = true) {
         gotoxy((MAP_WIDTH - 10) / 2 + MOVE_CENTER, MAP_HEIGHT / 2);
         printf("遊戲結束!\n");
