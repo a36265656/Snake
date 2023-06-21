@@ -65,6 +65,7 @@ void createMap() {
     }
     initialSnake();
     createFood();
+    updateScore();
 }
 
 void initialSnake() {
